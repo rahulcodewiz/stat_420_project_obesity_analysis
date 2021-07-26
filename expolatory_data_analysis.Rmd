@@ -1,0 +1,162 @@
+---
+title: "Obesity Analysis"
+author: "Rahul Sharma"
+date: ''
+geometry: margin=2cm
+output:
+  html_document: 
+    theme: readable
+    toc: yes
+  pdf_document: default
+
+urlcolor: cyan
+link-citations: yes
+---
+```{css, echo=FALSE}
+h1,h3 {
+  text-align: center;
+}
+```
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+options(scipen = 1, digits = 4, width = 80, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE)
+library(RWeka)
+library(knitr)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(viridis)
+library(hrbrthemes)
+```
+
+***
+
+```{r}
+obesity=read.arff("data/Obesity.arff"); 
+obesity$NCP=as.factor(as.integer(obesity$NCP))
+dim(obesity)
+```
+
+```{r}
+summary(obesity)
+```
+
+
+```{r}
+pairs(obesity)
+```
+```{r}
+str(obesity)
+```
+Data distribution by Age, Gender and Mode of transportation
+
+```{r warning=FALSE}
+obesity=obesity%>%mutate(ageBins = cut(Age, breaks = seq(0,100,by=10)))
+p1=ggplot(obesity, aes(fill=Gender, y=Age, x=ageBins)) + 
+    geom_bar(position="dodge", stat="identity")
+
+p2=ggplot(obesity, aes(fill=MTRANS,y=Age, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    theme_ipsum() +
+    xlab("")+
+  ylab("count")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggarrange(p1,p2,nrow=2,ncol=1)
+```
+
+Attributes related with eating habits analysis:
+
+- Frequent consumption of high caloric food (FAVC)
+
+- Frequency of consumption of vegetables (FCVC)
+
+- Number of main meals (NCP)
+
+- Consumption of food between meals (CAEC)
+
+- Consumption of water daily (CH20)
+
+- Consumption of alcohol (CALC)
+
+```{r}
+p1 = ggboxplot(obesity, x = "family_history_with_overweight", y = "Weight",
+    color = "family_history_with_overweight", palette = "jco")
+
+p2 = ggboxplot(obesity, x = "Gender", y = "Weight",
+    color = "Gender", palette = "jco")
+p3=ggboxplot(obesity, x = "MTRANS", y = "Weight",
+    color = "MTRANS", palette = "jco")
+p4=ggboxplot(obesity, x = "FAVC", y = "Weight",
+    color = "FAVC", palette = "jco")+
+    xlab("FAVC")
+p5=ggboxplot(obesity, x = "NCP", y = "Weight",
+    color = "NCP", palette = "jco")+
+    xlab("NCP")
+p6=ggboxplot(obesity, x = "CAEC", y = "Weight",
+    color = "CAEC", palette = "jco")+
+    xlab("CAEC")
+p7=ggboxplot(obesity, x = "SMOKE", y = "Weight",
+    color = "SMOKE", palette = "jco")+
+    xlab("SMOKE")
+ggarrange(p1,p2,p3,nrow=3,ncol=1)
+```
+
+```{r}
+ggarrange(p4,p5,p6,p7,nrow=2,ncol=2)
+```
+
+
+```{r}
+
+```
+
+```{r}
+p1=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=Gender))
+p2=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Weight, y = Age,color=Gender))
+p3=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Age,color=Gender))
+ggarrange(p1,p2,p3,nrow=3,ncol=1)
+```
+
+
+```{r eval=FALSE}
+ggplot(obesity, aes(x=Age, color=Gender)) +
+  geom_histogram(fill="white", position="dodge")+
+  theme(legend.position="top") 
+```
+
+```{r}
+p1=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=NCP))
+p2=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=SMOKE))
+p3=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=FAVC))
+p4=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=MTRANS))
+ggarrange(p1,p2,p3,p4,nrow=4,ncol=1)
+```
+
+Attributes related with the physical condition are:
+
+- Calories consumption monitoring (SCC)
+
+- Physical activity frequency (FAF)
+
+- Time using technology devices (TUE)
+
+```{r}
+ggboxplot(obesity, x = "SCC", y = "Weight",
+    color = "SCC", palette = "jco")
+```
+
+```{r}
+
+```
+
+
