@@ -32,6 +32,7 @@ library(hrbrthemes)
 
 ***
 
+## Load dataset
 ```{r}
 obesity=read.arff("data/Obesity.arff"); 
 obesity$NCP=as.factor(as.integer(obesity$NCP))
@@ -49,7 +50,12 @@ pairs(obesity)
 ```{r}
 str(obesity)
 ```
-Data distribution by Age, Gender and Mode of transportation
+
+***
+
+## Variables exploration
+
+### Data distribution by Age, Gender and Mode of transportation
 
 ```{r warning=FALSE}
 obesity=obesity%>%mutate(ageBins = cut(Age, breaks = seq(0,100,by=10)))
@@ -153,6 +159,87 @@ Attributes related with the physical condition are:
 ```{r}
 ggboxplot(obesity, x = "SCC", y = "Weight",
     color = "SCC", palette = "jco")
+```
+
+***
+
+## Model Diagnostics
+
+### Relevant variables full model
+
+```{r}
+obs_mod=lm(Weight~.,data=obesity)
+summary(obs_mod)
+
+```
+
+### Unusual records using cook's distance
+
+```{r}
+sum(cooks.distance(obs_mod)>4/nrow(obs_mod))
+```
+
+```{r}
+qqnorm(resid(obs_mod), main = "Normal Q-Q Plot, fit_2", col = "darkgrey") 
+qqline(resid(obs_mod), col = "dodgerblue", lwd = 2)
+ 
+```
+```{r}
+qqnorm(resid(obs_mod), main = "Normal Q-Q Plot, fit_2", col = "darkgrey") 
+qqline(resid(obs_mod), col = "dodgerblue", lwd = 2)
+```
+
+### Fitted vs residual
+```{r}
+plot(fitted(obs_mod), resid(obs_mod), col = "grey", pch = 20,
+xlab = "Fitted", ylab = "Residuals", main = "Data from Model 3")
+abline(h = 0, col = "darkorange", lwd = 2)
+ 
+```
+
+### Hist of residuals
+
+```{r}
+hist(resid(obs_mod),
+     xlab   = "Residuals",
+     main   = "Histogram of Residuals, fit_1",
+     col    = "darkorange",
+     border = "dodgerblue",
+     breaks = 20)
+```
+
+### Equal variance-
+
+```{r warning=FALSE}
+library(lmtest)
+bptest(obs_mod)
+```
+Normality test fails
+
+### Constant variance test using Sapiro
+
+```{r}
+shapiro.test(resid(obs_mod))
+```
+
+### Unusual observations hatvalues
+
+```{r}
+htval=hatvalues(obs_mod)
+sum(htval > 2 * mean(htval))
+```
+
+
+### Points of large leverage- rstandard
+
+
+```{r}
+sum(abs(rstandard(obs_mod)) > 2)
+```
+
+
+```{r}
+coefficients(summary(obs_mod))[3,"Pr(>|t|)"]
 ```
 
 ```{r}
