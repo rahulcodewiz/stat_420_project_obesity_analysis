@@ -28,6 +28,7 @@ library(ggpubr)
 library(dplyr)
 library(viridis)
 library(hrbrthemes)
+library(lmtest)
 ```
 
 ***
@@ -167,11 +168,59 @@ ggboxplot(obesity, x = "SCC", y = "Weight",
 
 ### Relevant variables full model
 
-```{r}
-obs_mod=lm(Weight~.,data=obesity)
-summary(obs_mod)
 
+
+```{r}
+plot_diagnostics=function (model){
+  par(mfrow = c(2, 2))
+  title=paste("Data from model: \n",summary(model)$call[2], summary(model)$call[3])
+  plot(fitted(model), resid(model),pch = 20,  cex.main=1,cex.lab=1,xlab = "Fitted", ylab = "Residuals", main=title)
+  abline(h = 0, lty = 2, lwd = 2)
+  qqnorm(resid(obs_mod), main = "Normal Q-Q Plot", col = "darkgrey") 
+  qqline(resid(obs_mod), col = "dodgerblue", lwd = 2)
+  hist(resid(obs_mod),
+       xlab   = "Residuals",
+       main   = "Histogram of Residuals",
+       col    = "darkorange",
+       border = "dodgerblue",
+       breaks = 20)
+}
+
+mod_performance=function(obs_mod,obs_tst,obs_trn){
+  smry=summary(obs_mod)
+  #Train RMSE
+  trn_rmse=sqrt(mean(resid(obs_mod)^2))
+  pred=predict(obs_mod,newdata=obs_tst)
+  #Train RMSE
+  tst_rmse=sqrt(mean((obs_tst$Weight-pred)^2))
+  list(r2=smry$r.squared
+       ,adjr2=smry$adj.r.squared,
+       trn_rmse=trn_rmse,tst_rmse=tst_rmse,
+       bptest=bptest(obs_mod)$p.value
+       ,sptest=shapiro.test(resid(obs_mod))$p.value)
+  
+}
 ```
+
+### Split dataset test and train
+
+```{r}
+set.seed(04082021)
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(obesity))
+## set the seed to make your partition reproducible
+trn_ind <- sample(seq_len(nrow(obesity)), size = smp_size)
+obs_trn <- obesity[trn_ind, ]
+obs_test <- obesity[-trn_ind, ]
+obs_mod=lm(Weight~.,data=obs_trn)
+summary(obs_mod)
+```
+### Fitted vs residual
+```{r}
+plot_diagnostics(obs_mod)
+mod_performance()
+```
+
 
 ### Unusual records using cook's distance
 
@@ -179,38 +228,9 @@ summary(obs_mod)
 sum(cooks.distance(obs_mod)>4/nrow(obs_mod))
 ```
 
-```{r}
-qqnorm(resid(obs_mod), main = "Normal Q-Q Plot, fit_2", col = "darkgrey") 
-qqline(resid(obs_mod), col = "dodgerblue", lwd = 2)
- 
-```
-```{r}
-qqnorm(resid(obs_mod), main = "Normal Q-Q Plot, fit_2", col = "darkgrey") 
-qqline(resid(obs_mod), col = "dodgerblue", lwd = 2)
-```
-
-### Fitted vs residual
-```{r}
-plot(fitted(obs_mod), resid(obs_mod), col = "grey", pch = 20,
-xlab = "Fitted", ylab = "Residuals", main = "Data from Model 3")
-abline(h = 0, col = "darkorange", lwd = 2)
- 
-```
-
-### Hist of residuals
-
-```{r}
-hist(resid(obs_mod),
-     xlab   = "Residuals",
-     main   = "Histogram of Residuals, fit_1",
-     col    = "darkorange",
-     border = "dodgerblue",
-     breaks = 20)
-```
-
 ### Equal variance-
 
-```{r warning=FALSE}
+```{r warning=FALSE, include=FALSE}
 library(lmtest)
 bptest(obs_mod)
 ```
@@ -243,6 +263,7 @@ coefficients(summary(obs_mod))[3,"Pr(>|t|)"]
 ```
 
 ```{r}
+
 
 ```
 
