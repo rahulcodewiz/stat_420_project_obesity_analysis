@@ -1,0 +1,27 @@
+---
+title: "Obesity Analysis"
+author: "Rahul Sharma"
+date: ''
+geometry: margin=2cm
+output:
+  html_document: 
+    theme: readable
+    toc: yes
+  pdf_document: default
+
+urlcolor: cyan
+link-citations: yes
+---
+```{css, echo=FALSE}
+h1 {
+  text-align: center;
+}
+```
+
+## Introduction
+
+## Methods
+
+- m1
+
+- m2
