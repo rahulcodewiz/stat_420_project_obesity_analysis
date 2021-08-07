@@ -338,7 +338,8 @@ p1=mod_performance(obs_mod_add_aic)
 p2=mod_performance(obs_mod_add_bic)
 p1=append(p1,unlist(list(num_predictors=length(coef(obs_mod_add_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_mod_add_bic)))))
-kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
+mod1_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
+kable(mod1_stats)
 
 ```
 
@@ -353,9 +354,29 @@ obs_mod_ex_search$which
 
 Quantifies the effect of collinearity using ***Variance Inflation Factor***-
 
+```{r}
+library(faraway)
+kable(vif(obs_mod_add))
+```
+
+Nothing major is observed from VIF scores. 
+
+Further, check if transformation is required on the response variable. We will use Box-Cox Transformations that considers a family of transformations on positive response variable.
+
+```{r warning=FALSE}
+library(MASS)
+library(faraway)
+boxcox(obs_mod_add, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
+```
 
 
+```{r}
+obs_mod_add_trns=lm((((Weight^0.2)-1)/0.2)~Gender+Age+Height+family_history_with_overweight+FAVC+FCVC+CAEC+SMOKE+FAF+CALC+MTRANS,data=obs_trn)
+summary(obs_mod_add_trns)$r.squared
+summary(obs_mod_add_trns)$adj.r.squared
+```
 
+We see there's slight improvement in model performance. We will be trying this approach on further models
 
 ### Model2- with two-way intreractions between variables
 
@@ -367,7 +388,8 @@ p1=mod_performance(obs_int_mod2_aic)
 p2=mod_performance(obs_int_mod2_bic)
 p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
-kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
+mod2_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
+kable(mod2_stats)
 
 ```
 
