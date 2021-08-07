@@ -1,6 +1,10 @@
 ---
-title: "Obesity Analysis"
-author: "Rahul Sharma"
+title: "Analysis and estimation of factors associated with Obesity"
+subtitle: 'STAT 420, Final Project Report'
+author: 
+- "Adam Goodell"
+- "Joel Dazo"
+- "Rahul Sharma"
 date: ''
 geometry: margin=2cm
 output:
@@ -34,7 +38,7 @@ library(knitr)
 
 ***
 
-# Introduction
+# 1. Introduction
 
 The goal of this project is to analyze and estimate the factors associated with the obesity. Obesity is one of the major problems in the current generation and has been growing steadily. There are many scientific publications over the past few years, specifically concentrating on the factors included in this project's dataset that is used largely in software industry to build better tools. 
 
@@ -75,6 +79,26 @@ obesity=read.arff("data/Obesity.arff");
 obesity$NCP=as.factor(as.integer(obesity$NCP))
 dim(obesity)
 ```
+```{r}
+load_cleansed=function(){
+  obesity=read.csv("data/obesity_cleaned.csv")
+  obesity$gender=as.factor(as.integer(obesity$gender))
+  obesity$famhist=as.factor(as.integer(obesity$famhist))
+  obesity$favc=as.factor(as.integer(obesity$favc))
+  obesity$fcvc=as.factor(as.integer(obesity$fcvc))
+  obesity$ncp=as.factor(as.integer(obesity$ncp))
+  obesity$caec=as.factor(as.integer(obesity$caec))
+  obesity$smoke=as.factor(as.integer(obesity$smoke))
+  obesity$scc=as.factor(as.integer(obesity$scc))
+  obesity$faf=as.factor(as.integer(obesity$faf))
+  obesity$tue=as.factor(as.integer(obesity$tue))
+  obesity$calc=as.factor(as.integer(obesity$calc))
+  obesity$mtrans=as.factor(as.integer(obesity$mtrans))
+  obesity$mot=as.factor(as.integer(obesity$mot))
+  obesity$wstatus=as.factor(as.integer(obesity$wstatus))
+  
+}
+```
 
 ***Provided predictors***
 
@@ -103,9 +127,9 @@ pairs(obesity)
 ```{r warning=FALSE}
 obesity=obesity%>%mutate(ageBins = cut(Age, breaks = seq(0,100,by=10)))
 p1=ggplot(obesity, aes(fill=Gender, y=Age, x=ageBins)) + 
-    geom_bar(position="dodge", stat="identity")
+    geom_histogram(position="dodge", stat="identity")
 
-p1 
+p1
 ```
  On the plot male and Female have equal records count on different age bins. As age grows the number of records are increasing
 
@@ -164,6 +188,7 @@ ggarrange(p1,p2,p3,nrow=3,ncol=1)
 ggarrange(p4,p5,p6,p7,nrow=2,ncol=2)
 ```
 
+Plot shows categorical variables related to eating habits have relationship with Weight.
 
 ***Height, Age, Gender and Weight distributions***
 
@@ -172,12 +197,12 @@ ggarrange(p4,p5,p6,p7,nrow=2,ncol=2)
 p1=ggplot(data = obesity) +
   geom_point(mapping = aes(x = Height, y = Weight,color=Gender))
 p2=ggplot(data = obesity) +
-  geom_point(mapping = aes(x = Weight, y = Age,color=Gender))
-p3=ggplot(data = obesity) +
-  geom_point(mapping = aes(x = Height, y = Age,color=Gender))
-ggarrange(p1,p2,p3,nrow=3,ncol=1)
+  geom_point(mapping = aes(x = Age, y = Weight,color=Gender))
+ggarrange(p1,p2,nrow=3,ncol=1)
 ```
+Observations are:
 
+- Height vs Weight and Height cs Age
 
 ```{r eval=FALSE}
 ggplot(obesity, aes(x=Age, color=Gender)) +
@@ -197,6 +222,8 @@ p4=ggplot(data = obesity) +
 ggarrange(p1,p2,p3,p4,nrow=4,ncol=1)
 ```
 
+Last plot shows Height vs weight and mode of transport as label, density of walking people is below 90.
+
 ***Attributes related with the physical condition are:***
 
 - Calories consumption monitoring (SCC)
@@ -206,6 +233,8 @@ ggarrange(p1,p2,p3,p4,nrow=4,ncol=1)
 ggboxplot(obesity, x = "SCC", y = "Weight",
     color = "SCC", palette = "jco")
 ```
+
+Above depicts people monitoring calories consumption are more likely to be fit.
 
 ***
 
@@ -335,8 +364,8 @@ obs_mod_ex_search$which
 
 ### Model2- with two-way intreractions between variables
 
-```{r}
-obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
+```{r eval=FALSE}
+obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
 obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
 obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
 #obs_mod_add_aic_fw=step(lm(Weight~1,data=obs_trn),score=Weight~Gender+Age+Height+family_history_with_overweight+FAVC+FCVC+NCP+CAEC+SMOKE+CH2O+SCC+FAF+TUE+CALC+MTRANS,direction="forward",trace=0)
@@ -351,7 +380,7 @@ kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
 
 ### Model3- two-way intreractions and step wise selection
 
-```{r}
+```{r eval=FALSE}
 obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
 
 obs_int_mod3_aic=step(obs_int_mod3,direction="both",trace=0)
@@ -392,7 +421,7 @@ length(coef(k_fold_modn))
 
 
 
-# Results
+# 2. Results
 
 
 ***Additive model performance analysis***
@@ -409,4 +438,4 @@ On the Residuals vs Fitted plot, the residuals spread is not bounce constantly b
 #anova(obs_mod_add,obs_mod_full)
 ```
 
-# Discussion
+# 3. Discussion
