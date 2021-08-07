@@ -75,8 +75,9 @@ In addition to predicting weight, our research metrics about obesity and body ma
 ***Load dataset***
 
 ```{r}
-obesity=read.arff("data/Obesity.arff"); 
-obesity$NCP=as.factor(as.integer(obesity$NCP))
+#obesity=read.arff("data/Obesity.arff"); 
+obesity=readRDS("data/obesity.Rda")
+#obesity$NCP=as.factor(as.integer(obesity$NCP))
 dim(obesity)
 ```
 ```{r}

@@ -25,3 +25,12 @@ h1 {
 - m1
 
 - m2
+
+
+```{r}
+library(RWeka)
+obesity=read.arff("data/Obesity.arff"); 
+obesity$NCP=as.factor(as.integer(obesity$NCP))
+saveRDS(obesity,file="data/obesity.Rda")
+```
+
