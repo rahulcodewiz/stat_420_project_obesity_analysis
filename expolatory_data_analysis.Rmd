@@ -72,6 +72,20 @@ In addition to predicting weight, our research metrics about obesity and body ma
 - Obesity II 35.0 to 39.9
 - Obesity III Higher than 40
 
+This project report encompasses topics-
+
+- Data cleaning
+- Multiple linear regression
+- ANOVA
+- Dummy variables
+- Interaction
+- Residual diagnostics
+- Outlier diagnostics
+- Transformations
+- Polynomial regression
+- Stepwise model selection
+- Variable selection
+
 ***Load dataset***
 
 ```{r}
@@ -80,6 +94,7 @@ obesity=readRDS("data/obesity.Rda")
 #obesity$NCP=as.factor(as.integer(obesity$NCP))
 dim(obesity)
 ```
+TODO: Add details about the data cleaning
 ```{r}
 load_cleansed=function(){
   obesity=read.csv("data/obesity_cleaned.csv")
@@ -303,7 +318,7 @@ summary(obs_mod_add)
 
 Test statistics PValue shows all the variables are important for the model. 
 
-Note: we have removed dervied variables agebins, NObeyesdad
+Note: we have removed drived variables agebins, NObeyesdad
 
 
 ```{r}
@@ -330,7 +345,9 @@ obs_mod_add_unusual_observations=obs_trn[(htval < 2 * mean(htval)),]
 
 Further we explore the ***Variable selection*** methods AIC, BIC, Exhastive search to find the best model
 
-***AIC and BIC in both directions search***
+- AIC search in both directions
+- BIC Search in both directions
+- Variable selection
 
 ```{r}
 obs_mod_add_aic=step(obs_mod_add,direction="both",trace=0)
@@ -362,7 +379,7 @@ kable(vif(obs_mod_add))
 
 Nothing major is observed from VIF scores. 
 
-Further, check if transformation is required on the response variable. We will use Box-Cox Transformations that considers a family of transformations on positive response variable.
+Further, we check if **Transformations** is required on the response variable. We will use ***Box-Cox*** Transformations that considers a family of transformations on positive response variable.
 
 ```{r warning=FALSE}
 library(MASS)
@@ -377,11 +394,17 @@ summary(obs_mod_add_trns)$r.squared
 summary(obs_mod_add_trns)$adj.r.squared
 ```
 
-We see there's slight improvement in model performance. We will be trying this approach on further models
+We observe slight performance improvement. We will be trying this approach on further models
 
 ### Model2- with two-way intreractions between variables
 
-```{r}
+- Build model using two-way Interactions
+- Variable selection using AIC in both direction
+- Variable selection using BIC in both direction
+- Present scores in tabular format
+- LINE assumptions test- Linearity, independence, Normality and Equal variance
+
+```{r eval=FALSE}
 obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
 obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
 obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
@@ -440,10 +463,39 @@ length(coef(k_fold_modn))
 # 2. Results
 
 
-***Additive model performance analysis***
+In the previous section we developed multiple models and use various strategies to improve the overall model performance. Next, our goal perform model diagnostics and performance analysis.
+
+## 2.1 Anova test
+
+Total number of comparisons ***Model 1 & 2 comparison***
+
+- Model 1: null model `obs_mod_add`
+
+Number of parameters: `r length(coef(obs_mod_add))`
+
+- Model 2: full model `obs_int_mod2_aic`
+
+Number of parameters: `r length(coef(obs_int_mod2_aic))`
+
+```{r}
+anova(obs_mod_add,obs_int_mod2_aic)[2,"Pr(>F)"]<0.01
+```
+We reject null hypothesis $H_0$ at significance $\alpha =0.01$. We prefer the interaction model `obs_int_mod2_aic` over the additive model. 
+
+
+## 2.2 Model Diagnostics
 
 ```{r}
 plot_diagnostics(obs_mod_add)
+plot_diagnostics(obs_int_mod2_aic)
+```
+
+```{r}
+p1=mod_performance(obs_int_mod2_aic)
+p2=mod_performance(obs_int_mod2_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
+kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
 ```
 
 On the Residuals vs Fitted plot, the residuals spread is not bounce constantly both side of the horizontal 0 line, we suspect Linearity assumption. ALso, we would suspect constant variance assumption as residuals spreads changes with increase in fitted value.
@@ -455,3 +507,7 @@ On the Residuals vs Fitted plot, the residuals spread is not bounce constantly b
 ```
 
 # 3. Discussion
+
+
+This shows two way interaction has improved model performance significantly as compared to the previous model. We run the variable selection using AIC and BIC. AIC has better $R^2$ compared to $AdjR^2$, however it shows poor performance in Test RMSE.
+
