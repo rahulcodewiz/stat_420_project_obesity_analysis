@@ -4,6 +4,7 @@
 - create new project then choose git
 - enter https://github.com/reethified/stat_420.git
 - Open & knit 'exploratory_data_analysis.Rmd'
+- You might have to install all required packages to run.
 - You can go to terminal to pull new changes from the repository using below command
 
 ```
