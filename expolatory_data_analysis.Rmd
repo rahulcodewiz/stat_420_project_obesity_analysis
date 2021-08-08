@@ -398,13 +398,15 @@ We observe slight performance improvement. We will be trying this approach on fu
 
 ### Model2- with two-way intreractions between variables
 
+At this stage we perform the following tasks
+
 - Build model using two-way Interactions
 - Variable selection using AIC in both direction
 - Variable selection using BIC in both direction
 - Present scores in tabular format
 - LINE assumptions test- Linearity, independence, Normality and Equal variance
 
-```{r eval=FALSE}
+```{r}
 obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
 obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
 obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
@@ -414,7 +416,6 @@ p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
 mod2_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
 kable(mod2_stats)
-
 ```
 
 ### Model3- two-way intreractions and step wise selection
@@ -424,48 +425,87 @@ obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
 
 obs_int_mod3_aic=step(obs_int_mod3,direction="both",trace=0)
 obs_int_mod3_bic=step(obs_int_mod3,direction="both",trace=0,k=log(nrow(obs_trn)))
-#obs_mod_add_aic_fw=step(lm(Weight~1,data=obs_trn),score=Weight~Gender+Age+Height+family_history_with_overweight+FAVC+FCVC+NCP+CAEC+SMOKE+CH2O+SCC+FAF+TUE+CALC+MTRANS,direction="forward",trace=0)
-#mod_performance(obs_mod_add_aic_bw)
 p1=mod_performance(obs_int_mod3_aic)
 p2=mod_performance(obs_int_mod3_bic)
 p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
 kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
-
 ```
+
+
+### Model4- Selected Intreractions model with Transformations and Outlier diagnostics
+
+```{r warning=FALSE}
+obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight + 
+    FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
+    CALC+ Gender + MTRANS+FCVC:MTRANS:family_history_with_overweight:Gender:CALC:FAVC:NCP:SCC:Height + Gender:Height + Gender:family_history_with_overweight + 
+    Gender:FCVC + Gender:NCP + Age:FCVC + Age:NCP + 
+     + Age:CH2O + Age:FAF + Age:TUE + Age:CALC + Height:family_history_with_overweight + 
+    family_history_with_overweight:CALC ,data=obs_trn)
+
+mod_performance(obs_int_mod4)
+p4=append(p4,unlist(list(num_predictors=length(coef(obs_int_mod4)))))
+mod4_stats=data.frame(obs_int_mod4=p4)
+```
+
 
 ### 2.3.N. KFold model training
 
-```{r warning=FALSE}
+```{r warning=FALSE, eval=FALSE}
 library(caret)
 k_fold_modn <- train(
-  Weight ~ ., obs_trn,
+  Weight ~ . - NObeyesdad - ageBins, obs_trn,
   method = "lm",
   trControl = trainControl(
     method = "cv", number = 5,
     verboseIter = FALSE
   )
 )
+
+mod_performance(k_fold_modn)
 ```
+
+This model performance is not good as compared to the interaction model
+
+### 2.4 Model optimization
+
+So far we discovered Model2 `obs_mod_add_aic` has the best performance, at this stage we will try to apply transformation and remove outliers to see if there are any improvements
+
+- Transformations
+
+```{r warning=FALSE}
+boxcox(obs_mod_add_aic, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
+```
+
 ```{r}
-plot_diagnostics(k_fold_modn)
+obs_mod_int_trans=lm((((Weight^0.2)-1)/0.2)~(.- NObeyesdad - ageBins)^2,data=obs_trn)
+boxcox(obs_mod_int_trans, plotit = TRUE)
 ```
 
+This shows the transformation was not helpful on response variable.
+
+***Leverage***
 
 ```{r}
-summary(k_fold_modn)
-
-length(coef(k_fold_modn))
+#We can not remove the records based on leverage as it's considering critical records as unusual
+htval=hatvalues(obs_mod_int_trans)
+obs_leverages=obs_trn[(htval > 2 * mean(htval)),]
 ```
 
 
+***Outliers***
 
-# 2. Results
+```{r}
+outliers=cooks.distance(obs_int_mod2_aic)>4/length(resid(obs_int_mod2_aic))
+obs_outliers=obs_trn[outliers,]
+```
+
+# 3. Results
 
 
 In the previous section we developed multiple models and use various strategies to improve the overall model performance. Next, our goal perform model diagnostics and performance analysis.
 
-## 2.1 Anova test
+## 3.1 Anova test
 
 Total number of comparisons ***Model 1 & 2 comparison***
 
@@ -483,31 +523,74 @@ anova(obs_mod_add,obs_int_mod2_aic)[2,"Pr(>F)"]<0.01
 We reject null hypothesis $H_0$ at significance $\alpha =0.01$. We prefer the interaction model `obs_int_mod2_aic` over the additive model. 
 
 
-## 2.2 Model Diagnostics
+## 3.2 Model Diagnostics
+
+```{r warning=FALSE}
+p1=mod_performance(obs_mod_add)
+p2=mod_performance(obs_int_mod2_aic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_mod_add)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
+kable(data.frame(obs_mod_add=p1,obs_int_mod2_aic=p2))
+```
+
+Observations are-
+
+- 2nd model has higher $R2$ and lower RMSE on train and test datasets and that we found using two-way interaction model and AIC step wise search
+- Both models fail to rejects Normality test using BPTest. 
+- Both models fail to rejects Equal variance test using Shaphirp test.
+- The winner model has 189 predictors
+
 
 ```{r}
 plot_diagnostics(obs_mod_add)
+```
+
+On the Residuals vs Fitted plot, the residuals spread is not bounce constantly both side of the horizontal 0 line, we suspect Linearity assumption. Also, we would suspect constant variance assumption as residuals spreads changes with increase in fitted value.
+
+QQ plot shows points spread close the line and we don't suspect normality.
+
+Residuals don't follow normal distribution.
+
+```{r}
 plot_diagnostics(obs_int_mod2_aic)
 ```
 
-```{r}
-p1=mod_performance(obs_int_mod2_aic)
-p2=mod_performance(obs_int_mod2_bic)
-p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
-p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
-kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
-```
-
-On the Residuals vs Fitted plot, the residuals spread is not bounce constantly both side of the horizontal 0 line, we suspect Linearity assumption. ALso, we would suspect constant variance assumption as residuals spreads changes with increase in fitted value.
+- Residuals vs Fitted plot, Linearity is suspected
+- Residuals vs Fitted plot, Equal variance is suspected
+- QQPlot, normality is suspected
 
 
+## 3.3 The big picture from all models
 
 ```{r}
-#anova(obs_mod_add,obs_mod_full)
+kable(cbind(mod2_stats,mod1_stats,mod4_stats))
 ```
 
-# 3. Discussion
+This is really interesting to see how complex model overfit the data. We see the last model has 1352 variables and best $R^2$ and RMSE scores however it perform really worse on test dataset ie. `Test_rmse` scpre. Our best selection would be the `Model2`
 
+
+## 3.4 Summary from diagnostics
+
+We used HatValue to identify leverages and Cook's distance for outliers detection in Methods section. There are `r nrow(obs_outliers)` outliers and `r nrow(obs_leverages)` leverages
+
+```{r}
+age_mot_agg=obs_outliers %>% count(ageBins,MTRANS)
+p1=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")
+
+age_mot_agg=obs_leverages %>% count(ageBins,MTRANS)
+p2=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")
+ggarrange(p1,p2,nrow=1,ncol=2)
+```
+
+# 4. Discussion
 
 This shows two way interaction has improved model performance significantly as compared to the previous model. We run the variable selection using AIC and BIC. AIC has better $R^2$ compared to $AdjR^2$, however it shows poor performance in Test RMSE.
 
