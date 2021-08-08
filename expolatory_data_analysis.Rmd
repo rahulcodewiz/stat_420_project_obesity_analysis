@@ -406,7 +406,7 @@ At this stage we perform the following tasks
 - Present scores in tabular format
 - LINE assumptions test- Linearity, independence, Normality and Equal variance
 
-```{r}
+```{r cache=TRUE}
 obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
 obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
 obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
@@ -414,25 +414,72 @@ p1=mod_performance(obs_int_mod2_aic)
 p2=mod_performance(obs_int_mod2_bic)
 p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
-mod2_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
+mod2_stats=data.frame(obs_int_mod2_aic=p1,obs_int_mod2_bic=p2)
 kable(mod2_stats)
 ```
 
+```{r}
+summary(obs_int_mod2_aic)$call
+```
+
+
+```{r warning=FALSE}
+mod_performance(lm(formula = Weight ~ Gender + Age + Height + family_history_with_overweight + 
+    FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
+    CALC + MTRANS + Gender:Age + Gender:Height + Gender:family_history_with_overweight + 
+    Gender:FCVC + Gender:NCP + Gender:CAEC + Gender:SMOKE + Gender:CH2O + 
+    Gender:CALC + Gender:MTRANS + Age:FAVC + Age:FCVC + Age:NCP + 
+    Age:CAEC + Age:CH2O + Age:FAF + Age:TUE + Age:CALC + Height:family_history_with_overweight + 
+    Height:FAVC + Height:FCVC + Height:NCP + Height:CAEC + Height:CH2O + 
+    Height:FAF + Height:TUE + Height:CALC + Height:MTRANS + family_history_with_overweight:FCVC + 
+    family_history_with_overweight:NCP + family_history_with_overweight:CAEC + 
+    family_history_with_overweight:SCC + family_history_with_overweight:TUE + 
+    family_history_with_overweight:CALC + family_history_with_overweight:MTRANS + 
+    FAVC:NCP + FAVC:CAEC + FAVC:SMOKE + FAVC:CH2O + FAVC:CALC + 
+    FCVC:NCP + FCVC:CAEC + FCVC:SMOKE + FCVC:CH2O + FCVC:CALC + 
+    FCVC:MTRANS + NCP:TUE + NCP:CALC + CAEC:SMOKE + CAEC:SCC + 
+    CAEC:FAF + CAEC:TUE + CAEC:MTRANS + SMOKE:FAF + SMOKE:CALC + 
+    SMOKE:MTRANS + CH2O:SCC + CH2O:FAF + CH2O:TUE + CH2O:MTRANS + 
+    SCC:TUE + SCC:CALC + SCC:MTRANS + FAF:CALC + FAF:MTRANS + 
+    TUE:MTRANS, data = obs_trn))
+mod_performance(lm(formula = Weight ~ Gender + Age + Height + family_history_with_overweight + 
+    FAVC + FCVC + NCP  + SMOKE + CH2O + SCC + FAF + TUE + MTRANS + Gender:Age + Gender:Height + Gender:family_history_with_overweight + 
+    Gender:FCVC + Gender:NCP + Gender:CAEC + Gender:SMOKE + Gender:CH2O + 
+     + Gender:MTRANS + Age:FAVC + Age:FCVC + Age:NCP + 
+    Age:CAEC + Age:CH2O + Age:FAF + Age:TUE +  Height:family_history_with_overweight + 
+    Height:FAVC + Height:FCVC + Height:NCP + Height:CAEC + Height:CH2O + 
+    Height:FAF + Height:TUE + + Height:MTRANS + family_history_with_overweight:FCVC + 
+    family_history_with_overweight:NCP + family_history_with_overweight:CAEC + 
+    family_history_with_overweight:SCC + family_history_with_overweight:TUE + 
+  family_history_with_overweight:MTRANS + 
+    FAVC:NCP + FAVC:CAEC + FAVC:SMOKE + FAVC:CH2O + 
+    FCVC:NCP + FCVC:CAEC + FCVC:SMOKE + FCVC:CH2O +  
+    FCVC:MTRANS + NCP:TUE +  CAEC:SMOKE + CAEC:SCC + 
+    CAEC:FAF + CAEC:TUE + CAEC:MTRANS + SMOKE:FAF +  
+    SMOKE:MTRANS + CH2O:SCC + CH2O:FAF + CH2O:TUE + CH2O:MTRANS + 
+    SCC:TUE  + SCC:MTRANS + + FAF:MTRANS + 
+    TUE:MTRANS, data = obs_trn))
+
+```
+
+
 ### Model3- two-way intreractions and step wise selection
 
-```{r eval=FALSE, cache=TRUE}
+```{r cache=TRUE}
 obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
-p1=mod_performance(obs_int_mod3)
-p2=mod_performance(obs_int_mod3_bic)
-p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
-p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
-kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
+smry=summary(obs_int_mod3)
+p1=list(r2=smry$r.squared
+       ,adjr2=smry$adj.r.squared,
+       Train_rmse=sqrt(mean(resid(obs_int_mod3)^2)),Test_rmse="NA",
+       bptest=bptest(obs_int_mod3)$p.value
+       ,sptest=shapiro.test(resid(obs_int_mod3))$p.value, num_predictors=length(coef(obs_int_mod3)))
+mod3_stats=data.frame(obs_int_mod3=unlist(p1))
 ```
 
 
 ### Model4- Selected Intreractions model with Transformations and Outlier diagnostics
 
-```{r warning=FALSE, cache=TRUE, eval=FALSE}
+```{r warning=FALSE, cache=TRUE}
 obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight + 
     FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
     CALC+ Gender + MTRANS+FCVC:MTRANS:family_history_with_overweight:Gender:CALC:FAVC:NCP:SCC:Height + Gender:Height + Gender:family_history_with_overweight + 
@@ -440,13 +487,14 @@ obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight +
      + Age:CH2O + Age:FAF + Age:TUE + Age:CALC + Height:family_history_with_overweight + 
     family_history_with_overweight:CALC ,data=obs_trn)
 
-mod_performance(obs_int_mod4)
-p4=append(p4,unlist(list(num_predictors=length(coef(obs_int_mod4)))))
-mod4_stats=data.frame(obs_int_mod4=p4)
+smry=summary(obs_int_mod4)
+p1=list(r2=smry$r.squared
+       ,adjr2=smry$adj.r.squared,
+       Train_rmse=sqrt(mean(resid(obs_int_mod4)^2)),Test_rmse="NA",
+       bptest=bptest(obs_int_mod4)$p.value
+       ,sptest=shapiro.test(resid(obs_int_mod4))$p.value, num_predictors=length(coef(obs_int_mod4)))
+mod4_stats=data.frame(obs_int_mod4=unlist(p1))
 ```
-
-r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest 
-8.409e-01  8.153e-01  1.046e+01  7.726e+01  3.339e-07  8.806e-14 
 
 ### 2.3.N. KFold model training
 
@@ -499,6 +547,8 @@ outliers=cooks.distance(obs_int_mod2_aic)>4/length(resid(obs_int_mod2_aic))
 obs_outliers=obs_trn[outliers,]
 ```
 
+
+
 # 3. Results
 
 
@@ -536,7 +586,7 @@ Observations are-
 
 - 2nd model has higher $R2$ and lower RMSE on train and test datasets and that we found using two-way interaction model and AIC step wise search
 - Both models fail to rejects Normality test using BPTest. 
-- Both models fail to rejects Equal variance test using Shaphirp test.
+- Both models fail to rejects Equal variance test using Shaphiro test.
 - The winner model has 189 predictors
 
 
@@ -555,14 +605,14 @@ plot_diagnostics(obs_int_mod2_aic)
 ```
 
 - Residuals vs Fitted plot, Linearity is suspected
-- Residuals vs Fitted plot, Equal variance is suspected
+- Residuals vs Fitted plot, Equal variance is not suspected
 - QQPlot, normality is suspected
 
 
 ## 3.3 The big picture from all models
 
 ```{r}
-kable(cbind(mod2_stats,mod1_stats))
+kable(cbind(mod1_stats,mod2_stats,mod3_stats,mod4_stats))
 ```
 
 This is really interesting to see how complex model overfit the data. We see the model4 has 1352 variables and best $R^2$ and RMSE scores however it perform really worse on test dataset ie. `Test_rmse` scpre. Our best selection would be the `Model2`
@@ -591,5 +641,5 @@ ggarrange(p1,p2,nrow=1,ncol=2)
 
 # 4. Discussion
 
-This shows two way interaction has improved model performance significantly as compared to the previous model. We run the variable selection using AIC and BIC. AIC has better $R^2$ compared to $AdjR^2$, however it shows poor performance in Test RMSE.
+
 
