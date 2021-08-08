@@ -420,12 +420,9 @@ kable(mod2_stats)
 
 ### Model3- two-way intreractions and step wise selection
 
-```{r eval=FALSE}
+```{r eval=FALSE, cache=TRUE}
 obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
-
-obs_int_mod3_aic=step(obs_int_mod3,direction="both",trace=0)
-obs_int_mod3_bic=step(obs_int_mod3,direction="both",trace=0,k=log(nrow(obs_trn)))
-p1=mod_performance(obs_int_mod3_aic)
+p1=mod_performance(obs_int_mod3)
 p2=mod_performance(obs_int_mod3_bic)
 p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
@@ -435,7 +432,7 @@ kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
 
 ### Model4- Selected Intreractions model with Transformations and Outlier diagnostics
 
-```{r warning=FALSE}
+```{r warning=FALSE, cache=TRUE, eval=FALSE}
 obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight + 
     FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
     CALC+ Gender + MTRANS+FCVC:MTRANS:family_history_with_overweight:Gender:CALC:FAVC:NCP:SCC:Height + Gender:Height + Gender:family_history_with_overweight + 
@@ -448,6 +445,8 @@ p4=append(p4,unlist(list(num_predictors=length(coef(obs_int_mod4)))))
 mod4_stats=data.frame(obs_int_mod4=p4)
 ```
 
+r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest 
+8.409e-01  8.153e-01  1.046e+01  7.726e+01  3.339e-07  8.806e-14 
 
 ### 2.3.N. KFold model training
 
@@ -563,10 +562,10 @@ plot_diagnostics(obs_int_mod2_aic)
 ## 3.3 The big picture from all models
 
 ```{r}
-kable(cbind(mod2_stats,mod1_stats,mod4_stats))
+kable(cbind(mod2_stats,mod1_stats))
 ```
 
-This is really interesting to see how complex model overfit the data. We see the last model has 1352 variables and best $R^2$ and RMSE scores however it perform really worse on test dataset ie. `Test_rmse` scpre. Our best selection would be the `Model2`
+This is really interesting to see how complex model overfit the data. We see the model4 has 1352 variables and best $R^2$ and RMSE scores however it perform really worse on test dataset ie. `Test_rmse` scpre. Our best selection would be the `Model2`
 
 
 ## 3.4 Summary from diagnostics

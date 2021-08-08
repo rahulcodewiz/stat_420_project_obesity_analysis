@@ -1,0 +1,13 @@
+base
+RWeka
+knitr
+ggplot2
+ggpubr
+dplyr
+viridisLite
+viridis
+hrbrthemes
+zoo
+lmtest
+faraway
+MASS
