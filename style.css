@@ -1,0 +1,72 @@
+<style>
+@import url('https://fonts.googleapis.com/css?family=IBM+Plex+Mono|IBM+Plex+Sans|IBM+Plex+Sans+Condensed|IBM+Plex+Serif');
+
+body {
+  font-family: 'IBM Plex Serif', serif;
+  font-size: 18px;
+
+}
+
+.mtitle {
+  font-family: 'IBM Plex Serif', sans-serif;
+  font-size: 44px;
+  font-weight: 500;
+  margin-top: 30px;
+  text-align: center;
+}
+
+.mheading1 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 24px;
+  font-weight: 500;
+  padding-top: 14px;
+}
+
+.mheading2 {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  padding-top: 14px;
+}
+
+p {
+  padding-top: 15px;
+  line-height: 1.6;
+}
+
+.hbreak {
+  padding-top: 2px;
+}
+
+code,
+kbd,
+pre,
+samp {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 13.5px;
+}
+
+.center {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    width: 32%;
+    height: auto;
+}
+
+.table.table-condensed {
+  font-family: 'IBM Plex Sans', sans-serif;
+  margin-top: 35px;
+  margin-bottom: 35px;
+}
+
+.table.table-striped.table-hover {
+  font-family: 'IBM Plex Sans', sans-serif;
+}
+
+blockquote {
+  font-family: 'IBM Plex Sans';
+  font-size: 20px;
+}
+
+</style>

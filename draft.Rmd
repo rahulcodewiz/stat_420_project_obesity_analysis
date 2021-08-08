@@ -1,0 +1,208 @@
+---
+title: ''
+output:
+  html_document: 
+    css: style.css
+  # html_notebook: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+<div style="padding-top:20px;"></div>
+<div class="mtitle">Estimation of Dietary and Behavioral Factors Associated With Body Weight</div>
+<div style="text-align: center; padding-top:10px;font-size:23   px;">STAT 420 Summer 2021 Final Project</div>
+<div style="text-align: center; padding-top:10px;">By Adam Goodell, Joel Dazo and Rahul Sharma</div>
+<div style="padding-top:20px;"></div>
+
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+options(scipen = 1, digits = 4, width = 80, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(corrplot)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(hrbrthemes)
+library(kableExtra)
+library(knitr)
+library(lmtest)
+library(RColorBrewer)
+library(readxl)
+library(RWeka)
+library(viridis)
+library(psych)
+```
+
+
+
+***
+# Introduction
+***
+
+The goal of this project is to analyze and estimate the factors associated with obesity. Obesity is one of the major problems in the current generation and has been growing steadily. There are many scientific publications over the past few years, specifically focusing on the factors included in this project's dataset that is used largely in software industry to build better tools. 
+
+We chose this research topic after analyzing the facts from WHO about obesity [2]:
+
+- Worldwide obesity has nearly tripled since 1975.
+- In 2016, more than 1.9 billion adults, 18 years and older, were overweight. Of these, over 650 million were obese.
+- 39% of adults aged 18 years and over were overweight in 2016, and 13% were obese.
+- Most of the world's population live in countries where overweight and obesity kills more people than underweight.
+- 39 million children under the age of 5 were overweight or obese in 2020.
+- Over 340 million children and adolescents aged 5-19 were overweight or obese in 2016.
+
+The source our research project is the paper published by Fabio Mendoza Palcechor. This paper presents data for the estimation of obesity levels in individuals from the countries of Mexico, Peru and Colombia [1] and we acquired the dataset from the UCI Machine Learning Repository [3]. The dataset contains numerical, ordinal and categorical attributes and has sufficient observations for regression study that fulfills the course requirement. Furthermore, this dataset is represented as comma-separated values with `17` variables or attributes and `2,111` records. It is made available in CSV format as well as in an Attribute-Relation File Format (ARFF) format for use with the Weka machine learning software.
+
+The dataset can be accessed and downloaded by following this <a href="https://urldefense.com/v3/__https://archive.ics.uci.edu/ml/machine-learning-databases/00544/ObesityDataSet_raw_and_data_sinthetic*20(2).zip__;JQ!!DZ3fjg!smWxBizt9_P1O4hbNghVvRKkrJtci8J3d-wBQp8u_g8sio-T1OfpK5ekJP97MVyXt4fO$">link</a>.
+
+
+Our primarily our aim is to explore these topics but not limited to:
+
+- Estimation of the obesity level of individuals using various eating habits.
+- Estimation of the obesity level of individuals using various physical conditions.
+- How other variables are associated with the Obesity Gender, Age, Height and Weight impacts.
+- Build the model to predict Weights and Obesity levels using linear regression and logistic regression respectively.
+
+In addition to predicting weight, our research metrics about obesity and body mass index (BMI) shall be compared with the baseline published by Mendoza and WHO [1]:
+
+- Underweight Less than 18.5 
+- Normal 18.5 to 24.9
+- Overweight 25.0 to 29.9
+- Obesity I 30.0 to 34.9
+- Obesity II 35.0 to 39.9
+- Obesity III Higher than 40
+
+This project report encompasses these topics:
+
+- Data cleaning
+- Multiple linear regression
+- ANOVA
+- Dummy variables
+- Interaction
+- Residual diagnostics
+- Outlier diagnostics
+- Transformations
+- Polynomial regression
+- Stepwise model selection
+- Variable selection
+
+<br>
+
+***
+# Methods
+***
+
+What immediately follows are the tasks that were applied on the original data to prepare it for modelling.
+
+## Load the data
+
+The obesity dataset is loaded for use in the project after being downloaded from the UCI webiste.
+
+
+```{r echo=TRUE}
+obesity = read_excel("obesity_cleaned.xlsx")
+```
+
+
+<div style="padding-top:20px;"></div>
+
+
+## Data Cleaning
+
+The column names are renamed for uniformity and to facilitate the presentation of function results and metrics.
+
+
+| Original Column Names          | New Column Names | Description                                                         |
+|--------------------------------|------------------|---------------------------------------------------------------------|
+| Gender                         | gender           | Categorical                                                         |
+| Age                            | age              | Numeric                                                             |
+| Height                         | height           | Numeric                                                             |
+| Weight                         | weight           | Numeric                                                             |
+| family_history_with_overweight | famhist          | Categorical. Family member suffered or suffers from overweightness. |
+| FAVC                           | favc             | Categorical. Frequent consumption of high caloric food.             |
+| NCP                            | ncp              | Numeric. Number of main meals                                       |
+| CAEC                           | caec             | Categorical. Consumption of food between meals.                     |
+| SMOKE                          | smoke            | Categorical. Responder smokes or not.                               |
+| CH2O                           | ch2o             | Numeric. Water consumption in liters.                               |
+| SCC                            | scc              | Categorical. Responder monitor calories eaten daily.                |
+| FAF                            | faf              | Numeric. Physical activity frequency.                               |
+| TUE                            | tue              | Numeric. Time using technology devices.                             |
+| CALC                           | calc             | Categorical. Consumption of alcohol.                                |
+| MTRANS                         | mtrans           | Categorical. Mode of transportation used by the responder.          |
+| NObeyesdad                     | wstatus          | Categorical. Weight status or obesity level.                        |
+
+
+There were 101 observations whose `NObeyesdad` values needed to be re-classified from the original 
+because the BMI values were misclassified based on the BMI-based WHO classification schedule that the data 
+source mentioned and tried to adhere to. Below are some examples with the correct classification given under 
+the new `wstatus` column.
+
+
+
+| BMI   | NObeyesdad | wstatus |
+|-------|------------|---------|
+| 18.49 | Normal     | Under   |
+| 36.77 | Obese3     | Obese2  |
+| 24.54 | Over       | Normal  |
+| 35.13 | Obese1     | Obese2  |
+| 29.99 | Obese1     | Over    |
+
+
+
+The columns and descriptions having been identified, we now proceed to coerce those variables that need to be 
+defined as factor variables to aid in our modelling later.
+
+
+```{r echo=TRUE}
+# coerce variables into factors
+obesity$famhist = as.factor(obesity$famhist)
+obesity$favc    = as.factor(obesity$favc)
+obesity$caec    = as.factor(obesity$caec)
+obesity$smoke   = as.factor(obesity$smoke)
+obesity$scc     = as.factor(obesity$scc)
+obesity$calc    = as.factor(obesity$calc)
+obesity$mot     = as.factor(obesity$mot)
+obesity$wstatus = as.factor(obesity$wstatus)
+obesity$mtrans  = as.factor(obesity$mtrans)
+```
+
+
+
+
+<div style="padding-top:20px;"></div>
+
+
+## Collinearity
+
+The pair plot below broadly shows the correlation between all the predictors in the `obesity` dataset.
+
+```{r echo=FALSE, fig.height=10, fig.width=10}
+obesity.pairs = obesity %>% dplyr::select(-weight)
+pairs.panels(obesity.pairs)
+```
+
+
+
+```{r echo=FALSE}
+# set aside the numeric predictors
+obesity_numeric = subset(obesity, select = c("age", "height", "ncp", "ch2o", "faf", "tue"))
+
+# present the correlation table
+kable(cor(obesity_numeric[sapply(obesity_numeric, function(x) !is.factor(x))], method = "pearson"), digits = 2, "html", 
+      caption = "") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = T, font_size = 12) 
+```
+
+
+There seems to be no strong positive nor negative relationship between the predictors.    The correlation coefficients
+
+
+
+
+
+
+
+
