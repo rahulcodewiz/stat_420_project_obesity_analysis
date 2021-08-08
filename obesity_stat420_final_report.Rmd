@@ -1,0 +1,773 @@
+---
+title: "Analysis and estimation of factors associated with Obesity"
+subtitle: 'STAT 420, Final Project Report'
+author: 
+- "Adam Goodell"
+- "Joel Dazo"
+- "Rahul Sharma"
+date: ''
+geometry: margin=2cm
+output:
+  html_document: 
+    theme: readable
+    toc: yes
+    css: style.css
+  pdf_document: default
+
+urlcolor: cyan
+link-citations: yes
+---
+```{css, echo=FALSE}
+h1,h3 {
+  text-align: center;
+}
+```
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+options(scipen = 1, digits = 4, width = 80, fig.align = "center")
+knitr::opts_chunk$set(echo = TRUE)
+library(RWeka)
+library(knitr)
+library(ggplot2)
+library(ggpubr)
+library(dplyr)
+library(viridis)
+library(hrbrthemes)
+library(lmtest)
+library(knitr)
+library(corrplot)
+library("psych")
+```
+
+***
+
+# 1. Introduction
+
+The goal of this project is to analyze and estimate the factors associated with the obesity. Obesity is one of the major problems in the current generation and has been growing steadily. There are many scientific publications over the past few years, specifically concentrating on the factors included in this project's dataset that is used largely in software industry to build better tools. 
+
+We chose this research topic after analyzing the facts from WHO about obesity [2]:
+
+- Worldwide obesity has nearly tripled since 1975.
+- In 2016, more than 1.9 billion adults, 18 years and older, were overweight. Of these over 650 million were obese.
+- 39% of adults aged 18 years and over were overweight in 2016, and 13% were obese.
+- Most of the world's population live in countries where overweight and obesity kills more people than underweight.
+- 39 million children under the age of 5 were overweight or obese in 2020.
+- Over 340 million children and adolescents aged 5-19 were overweight or obese in 2016.
+
+The source our research project is the paper published by Fabio Mendoza Palcechor, this paper presents data for the estimation of obesity levels in individuals from the countries of Mexico, Peru and Colombia [1] and we acquired the dataset from the UCI Machine Learning Repository [3]. The dataset contains numerical, ordinal and categorical attributes and has sufficient observations for regression study that fulfills this course requirement. Further, this dataset is represented as comma-separated values with `17` variables or attributes and `2,111` records. It's made available in CSV format as well as in an Attribute-Relation File Format (ARFF) format for use with the Weka machine learning software.
+
+The dataset can be accessed and downloaded by following this <a href="https://urldefense.com/v3/__https://archive.ics.uci.edu/ml/machine-learning-databases/00544/ObesityDataSet_raw_and_data_sinthetic*20(2).zip__;JQ!!DZ3fjg!smWxBizt9_P1O4hbNghVvRKkrJtci8J3d-wBQp8u_g8sio-T1OfpK5ekJP97MVyXt4fO$">link</a>.
+
+
+**Why are you creating a model for this data?**
+
+Although predicting an individual's weight might be considered an uncommon or even an exceptional ask, estimating it might prove beneficial in certain cases:
+- Imputing the Weight: The model will provide a better source for imputing a person's weight if the other dietary and social predictors are present.
+- Industrial and commerical industries might still be able to estimate the weights of their customers if, for some reason, HIPAA considerations only allow for the availability of the predictors selected in our model. Airline, marketing and pharmaceutical companies will not be precluded to conduct studies, tests and experiments (proof of concept) if weight as a variable is not present but otherwise vital for such endeavors. (edited) 
+
+**What is the goal of this model?**
+
+The goal of the model is to estimate the average weight of an individual
+given information about the individual's dietary, social and other physical characteristics.
+
+***Primarily our aim is to explore these topics but not limited to***
+
+- How other variables are associated with the Obesity Gender, Age, and Height impacts Weight.
+- Build the model to predict Weights of individuals using linear regression.
+
+In addition to predicting weight, our research metrics about obesity and body mass index (BMI) shall be compared with the baseline published by Mendoza and WHO [1]:
+
+- Underweight Less than 18.5 
+- Normal 18.5 to 24.9
+- Overweight 25.0 to 29.9
+- Obesity I 30.0 to 34.9
+- Obesity II 35.0 to 39.9
+- Obesity III Higher than 40
+
+This project report encompasses topics:
+
+- Data cleaning
+- Multiple linear regression
+- ANOVA
+- Dummy variables
+- Interaction
+- Residual diagnostics
+- Outlier diagnostics
+- Transformations
+- Polynomial regression
+- Stepwise model selection
+- Variable selection
+
+***Load dataset***
+
+```{r}
+obesity=readRDS("data/obesity.Rda")
+dim(obesity)
+```
+
+<div style="padding-top:20px;"></div>
+
+***Provided predictors***
+
+```{r}
+str(obesity)
+```
+<div style="padding-top:20px;"></div>
+
+
+***Summary of each variable***
+
+```{r}
+summary(obesity)
+```
+
+***
+<br>
+
+# 2. Methods
+
+## 2.1. Exploratory Data Analysis
+
+***Observe Collinearity Issues Among Variables***
+
+```{r fig.height=10, fig.width=10}
+obesity.pairs = obesity %>% dplyr::select(-Weight)
+pairs.panels(obesity.pairs)
+```
+
+```{r }
+# set aside the numeric predictors
+obesity_numeric = subset(obesity, select = c("Age", "Height", "NCP", "CH2O", "FAF", "TUE"))
+# present the correlation table
+kable(cor(obesity_numeric[sapply(obesity_numeric, function(x) !is.factor(x))], method = "pearson"), digits = 2, "html", 
+      caption = "") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = T, font_size = 12) 
+```
+
+The pair plot below broadly shows the correlation between all the predictors in the `obesity` dataset.
+
+<div style="padding-top:20px;"></div>
+
+***Data distribution by Age, Gender and Mode of transportation***
+
+```{r warning=FALSE}
+obesity=obesity%>%mutate(ageBins = cut(Age, breaks = seq(0,100,by=10)))
+age_agg=obesity %>% count(ageBins,Gender)
+ggplot(age_agg, aes(ageBins, n, fill = Gender)) +     
+  geom_col(position = 'dodge')+
+    xlab("Age Group")+
+    ylab("Frequency")+
+    ggtitle("Age group and Frequency comparison by Gender") 
+
+```
+On the plot majority of the observations are between 10 to 40 age range and 20-30 group has maximum number of records records. 
+
+```{r warning=FALSE}
+age_mot_agg=obesity %>% count(ageBins,MTRANS)
+ggplot(age_mot_agg, aes(fill=MTRANS,y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")+
+    ggtitle("Age group and Frequency comparison by Mode of Transport")
+```
+
+Graph shows interesting factors about mode of transportation, majority of people under 30 prefer `Public transport` and conversely, above 30 prefer `Automobile` for transport.
+
+<div style="padding-top:20px;"></div>
+
+***Attributes related with eating habits analysis:***
+
+- Frequent consumption of high caloric food (FAVC)
+
+- Frequency of consumption of vegetables (FCVC)
+
+- Number of main meals (NCP)
+
+- Consumption of food between meals (CAEC)
+
+- Consumption of water daily (CH20)
+
+- Consumption of alcohol (CALC)
+
+```{r }
+p1 = ggboxplot(obesity, x = "family_history_with_overweight", y = "Weight",
+    color = "family_history_with_overweight", palette = "jco")
+p2 = ggboxplot(obesity, x = "Gender", y = "Weight",
+    color = "Gender", palette = "jco")
+p3=ggboxplot(obesity, x = "MTRANS", y = "Weight",
+    color = "MTRANS", palette = "jco")
+p4=ggboxplot(obesity, x = "FAVC", y = "Weight",
+    color = "FAVC", palette = "jco")+
+    xlab("FAVC")
+p5=ggboxplot(obesity, x = "NCP", y = "Weight",
+    color = "NCP", palette = "jco")+
+    xlab("NCP")
+p6=ggboxplot(obesity, x = "CAEC", y = "Weight",
+    color = "CAEC", palette = "jco")+
+    xlab("CAEC")
+p7=ggboxplot(obesity, x = "SMOKE", y = "Weight",
+    color = "SMOKE", palette = "jco")+
+    xlab("SMOKE")
+ggarrange(p1,p2,p3,nrow=3,ncol=1)
+```
+
+```{r}
+ggarrange(p4,p5,p6,p7,nrow=2,ncol=2)
+```
+
+Plot shows categorical variables related to eating habits have relationship with Weight.
+
+```{r}
+ggplot(obesity, aes(x=Age, color=Gender)) +
+  geom_histogram(fill="white", position="dodge")+
+  theme(legend.position="top") 
+```
+
+```{r}
+p1=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=NCP))+
+  ggtitle("Height vs Weight by Number of main meals (NCP) ")
+p2=ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=SMOKE))+
+  ggtitle("Height vs Weight by Smoking habit")
+ggarrange(p1,p2,nrow=2,ncol=1)
+```
+
+
+```{r}
+ggplot(data = obesity) +
+  geom_point(mapping = aes(x = Height, y = Weight,color=FAVC))+
+  ggtitle("Height vs Weight by Frequent consumption of high caloric food")
+```
+<div style="padding-top:20px;"></div>
+
+***Attributes related with the physical condition are:***
+
+- Calories consumption monitoring (SCC)
+
+```{r}
+ggboxplot(obesity, x = "SCC", y = "Weight",
+    color = "SCC", palette = "jco")
+```
+
+Above depicts people monitoring calories consumption are more likely to be fit.
+
+***
+
+<div style="padding-top:20px;"></div>
+
+## 2.2. Data Cleaning
+
+***Coerce Categorical Variables to Factors***
+
+The columns and descriptions having been identified, we now proceed to coerce those variables that need to be 
+defined as factor variables to aid in our modeling later.
+
+```{r}
+load_cleansed=function(data = obesity){
+  obesity$Gender=as.factor(as.integer(obesity$Gender))
+  obesity$family_history_with_overweight=as.factor(as.integer(obesity$family_history_with_overweight))
+  obesity$FAVC=as.factor(as.integer(obesity$FAVC))
+  obesity$FCVC=as.factor(as.integer(obesity$FCVC))
+  obesity$NCP=as.factor(as.integer(obesity$NCP))
+  obesity$CAEC=as.factor(as.integer(obesity$CAEC))
+  obesity$SMOKE=as.factor(as.integer(obesity$SMOKE))
+  obesity$SCC=as.factor(as.integer(obesity$SCC))
+  obesity$FAF=as.factor(as.integer(obesity$FAF))
+  obesity$TUE=as.factor(as.integer(obesity$TUE))
+  obesity$CALC=as.factor(as.integer(obesity$CALC))
+  obesity$MTRANS=as.factor(as.integer(obesity$MTRANS))
+  obesity$CH2O=as.factor(as.integer(obesity$CH2O))
+  obesity$NObeyesdad=as.factor(as.integer(obesity$NObeyesdad))
+  obesity
+}
+```
+
+```{r}
+obesity = load_cleansed(obesity)
+str(obesity)
+```
+
+We also experimented with adjusting some of the categorical variables, particularly `MTRANS` and `NObeyesdad` to reduce the factor levels, however in testing we found that did not improve our results so we used the original values for those variables.
+
+<div style="padding-top:20px;"></div>
+
+## 2.3. Common functions to perform model diagnostics
+
+***Split dataset test and traint***
+
+```{r}
+set.seed(04082021)
+## 75% of the sample size
+smp_size <- floor(0.75 * nrow(obesity))
+## set the seed to make your partition reproducible
+trn_ind <- sample(seq_len(nrow(obesity)), size = smp_size)
+obs_trn <- obesity[trn_ind, ]
+obs_test <- obesity[-trn_ind, ]
+```
+
+<div style="padding-top:20px;"></div>
+
+***Useful functions***
+
+```{r}
+
+#' Generate plots for regression assumptions- Linearity, Normality and Equal variance
+#' i.e. Fitted vs Residual, QQ Plot, Residuals histogram
+#' @param obs_mod A model for plots
+
+plot_diagnostics=function (model){
+  par(mfrow = c(2, 2))
+  title=paste("Data from model: \n",summary(model)$call[2], summary(model)$call[3])
+  plot(fitted(model), resid(model),pch = 20,  cex.main=1,cex.lab=1,xlab = "Fitted", ylab = "Residuals")
+  abline(h = 0, lty = 2, lwd = 2, col="darkorange")
+  qqnorm(resid(model), main = "Normal Q-Q Plot", col = "darkgrey") 
+  qqline(resid(model), col = "dodgerblue", lwd = 2)
+  hist(resid(model),
+       xlab   = "Residuals",
+       main   = "Histogram of Residuals",
+       col    = "darkorange",
+       border = "dodgerblue",
+       breaks = 20)
+}
+
+#' Return model performance metrics
+#' R2, Adj R2,Train_RMSE, Test_RMSE, BPTEST, SP Test
+#
+#' @param obs_mod A model for metrics is required
+#' @param test dataset- used to calculate test RMSE. Default value is obesity test data
+
+mod_performance=function(obs_mod,obs_tst=obs_test){
+  smry=summary(obs_mod)
+  #Train RMSE
+  trn_rmse=sqrt(mean(resid(obs_mod)^2))
+  pred=predict(obs_mod,newdata=obs_tst)
+  #test RMSE
+  tst_rmse=sqrt(mean((obs_tst$Weight-pred)^2))
+  scores=list(r2=smry$r.squared
+       ,adjr2=smry$adj.r.squared,
+       Train_rmse=trn_rmse,Test_rmse=tst_rmse,
+       bptest=bptest(obs_mod)$p.value
+       ,sptest=shapiro.test(resid(obs_mod))$p.value)
+  
+  unlist(scores, recursive = TRUE, use.names = TRUE)
+}
+```
+
+## 2.4. Model Diagnostics, Performance and Selection
+
+### Model1- Additive model with all the parameters
+
+```{r}
+obs_mod_add=lm(Weight~.-NObeyesdad-ageBins,data=obs_trn)
+```
+
+```{r eval = FALSE}
+summary(obs_mod_add)
+```
+
+Note: we have removed derived variables agebins, NObeyesdad
+
+```{r eval = FALSE}
+mod_performance(obs_mod_add)
+```
+
+Next, we will look at unusual observations:
+
+***Outliers*** analysis using the cook's distance
+
+```{r}
+sum(cooks.distance(obs_mod_add)>4/nrow(obs_mod_add))
+```
+
+There are no outliers idenitified.
+
+<div style="padding-top:20px;"></div>
+
+***Unusual observations using hatvalues***
+
+```{r}
+#We can not remove the records based on leverage as it's considering critical records as unusual
+htval=hatvalues(obs_mod_add)
+obs_mod_add_unusual_observations=obs_trn[(htval < 2 * mean(htval)),]
+```
+
+Further we explore the ***Variable selection*** methods AIC, BIC, Exhastive search to find the best model
+
+- AIC search in both directions
+- BIC Search in both directions
+- Variable selection
+
+```{r}
+obs_mod_add_aic=step(obs_mod_add,direction="both",trace=0)
+obs_mod_add_bic=step(obs_mod_add,direction="both",trace=0,k=log(nrow(obs_trn)))
+p1=mod_performance(obs_mod_add_aic)
+p2=mod_performance(obs_mod_add_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_mod_add_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_mod_add_bic)))))
+mod1_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
+```
+
+<div style="padding-top:20px;"></div>
+
+***Exhaustive search***
+
+```{r}
+library(leaps)
+obs_mod_ex_search = summary(regsubsets(Weight ~ .-NObeyesdad-ageBins, data = obesity))
+obs_mod_ex_search$which
+```
+
+
+Quantifies the effect of collinearity using ***Variance Inflation Factor***-
+
+```{r}
+library(faraway)
+kable(vif(obs_mod_add))
+```
+```{r message=FALSE, warning=FALSE}
+wt_all = lm(Weight ~ . -ageBins - NObeyesdad, data = obs_trn)
+vif(wt_all)[vif(wt_all) > 5]
+```
+
+The above code lists what are deemed to be the variables with a very high collinearity rate (vif > 5).
+It seems that `caec` (consumption of food between meals) has a high VIF. Including these variables might pose some issues at explaining the relationship between the response and the predictors.
+
+It is not a surprise to see `bmi` as among the variables that pose a collinearity issue. This is because it is highly correlated with `height` and `weight` (it is actually calculated from them).
+
+We will retain the `caec` and `calc` predictors as their interaction with other predictors help generate a suitable model to estimate the weight of a person given the other predictors.
+
+Further, we check if **Transformations** is required on the response variable. We will use ***Box-Cox*** Transformations that considers a family of transformations on positive response variable.
+
+```{r warning=FALSE}
+library(MASS)
+library(faraway)
+boxcox(obs_mod_add, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
+```
+
+
+```{r}
+obs_mod_add_trns=lm((((Weight^0.2)-1)/0.2)~Gender+Age+Height+family_history_with_overweight+FAVC+FCVC+CAEC+SMOKE+FAF+CALC+MTRANS,data=obs_trn)
+summary(obs_mod_add_trns)$r.squared
+summary(obs_mod_add_trns)$adj.r.squared
+```
+
+We observe slight performance improvement. We will be trying this approach on further models
+
+### Model2 with two-way intreractions between variables
+
+At this stage we perform the following tasks
+
+- Build model using two-way Interactions
+- Variable selection using AIC in both direction
+- Variable selection using BIC in both direction
+- Present scores in tabular format
+- LINE assumptions test: Linearity, Independence, Normality and Equal variance
+
+```{r}
+obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
+obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
+obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
+p1=mod_performance(obs_int_mod2_aic)
+p2=mod_performance(obs_int_mod2_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
+mod2_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
+```
+
+### Model3- two-way intreractions and step wise selection
+
+```{r eval=FALSE, cache=TRUE}
+obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
+p1=mod_performance(obs_int_mod3)
+p2=mod_performance(obs_int_mod3_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
+kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
+```
+
+
+### Model4- Selected Intreractions model with Interaction Terms and Outlier diagnostics
+
+```{r warning=FALSE, cache=TRUE, eval=FALSE}
+obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight + 
+    FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
+    CALC+ Gender + MTRANS+FCVC:MTRANS:family_history_with_overweight:Gender:CALC:FAVC:NCP:SCC:Height + Gender:Height + Gender:family_history_with_overweight + 
+    Gender:FCVC + Gender:NCP + Age:FCVC + Age:NCP + 
+     + Age:CH2O + Age:FAF + Age:TUE + Age:CALC + Height:family_history_with_overweight + 
+    family_history_with_overweight:CALC ,data=obs_trn)
+
+mod_performance(obs_int_mod4)
+p4=append(p4,unlist(list(num_predictors=length(coef(obs_int_mod4)))))
+mod4_stats=data.frame(obs_int_mod4=p4)
+```
+
+r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest 
+8.409e-01  8.153e-01  1.046e+01  7.726e+01  3.339e-07  8.806e-14 
+
+*Note: we omitted model 3 and model 4 in our final decision as they took far too long to execute and did not yield worthy results. However their performance results are included here for reference.*
+
+### 2.5.N. K-Fold model training
+
+```{r warning=FALSE, eval=FALSE}
+library(caret)
+k_fold_modn <- train(
+  Weight ~ . - NObeyesdad - ageBins, obs_trn,
+  method = "lm",
+  trControl = trainControl(
+    method = "cv", number = 5,
+    verboseIter = FALSE
+  )
+)
+```
+
+This model performance is not good as compared to the interaction model
+
+### 2.6 Model optimization
+
+So far we discovered Model2 `obs_mod_add_aic` has the best performance, at this stage we will try to apply transformation and remove outliers to see if there are any improvements
+
+- Transformations
+
+```{r warning=FALSE}
+boxcox(obs_mod_add_aic, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
+```
+
+```{r}
+obs_mod_int_trans=lm((((Weight^0.2)-1)/0.2)~(.- NObeyesdad - ageBins)^2,data=obs_trn)
+boxcox(obs_mod_int_trans, plotit = TRUE)
+```
+
+This shows the transformation was not helpful on response variable. Therefore we only apply polynomial transformations to the numerical variables. However our results for polynomial transformations were not better than 
+
+```{r eval = FALSE}
+obs_int_mod2_log_poly_2=lm(formula = Weight ~ (. - NObeyesdad + I(Height^2) + I(Age^2))^2, data = obs_trn)
+obs_int_mod2_log_poly2_aic=step(obs_int_mod2_log_poly_2,direction="both",trace=0)
+obs_int_mod2_log_poly2_bic=step(obs_int_mod2_log_poly_2,direction="both",trace=0,k=log(nrow(obs_trn)))
+```
+
+```{r eval = FALSE}
+p1=mod_performance(obs_int_mod2_log_poly2_aic)
+p2=mod_performance(obs_int_mod2_log_poly2_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_log_poly2_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_log_poly2_bic)))))
+mod2_stats=data.frame(obs_int_mod2_log_poly2_aic=p1,obs_int_mod2_log_poly2_bic=p2)
+kable(mod2_stats)
+```
+
+*Note: we omitted these models with transformations in our final decision as added significant time to execute and did not yield worthy results. Their results showed very minor differences in performance metrics and added complexity which was not desirable in our final model.*
+
+<div style="padding-top:20px;"></div>
+
+***Leverage***
+
+```{r}
+#We cannot remove the records based on leverage as it's considering critical records as unusual. 
+htval=hatvalues(obs_mod_int_trans)
+obs_leverages=obs_trn[(htval > 2 * mean(htval)),]
+```
+Here we found that the records containing high leverage have factor levels that are only in the training set. Had we removed these records, that would conflict with the test set as the test set would contain higher factor levels for some of the categorical variables. Hence we did not remove records with high leverage.
+
+<div style="padding-top:20px;"></div>
+
+***Outliers***
+
+```{r}
+outliers=cooks.distance(obs_int_mod2_aic)>4/length(resid(obs_int_mod2_aic))
+obs_outliers=obs_trn[outliers,]
+```
+
+<div style="padding-top:20px;"></div>
+
+# 3. Results
+
+In the previous section we developed multiple models and use various strategies to improve the overall model performance. Next, we demonstrate our model diagnostics and performance analysis.
+
+## 3.1 Anova test
+
+Total number of comparisons ***Model 1 & 2 comparison***
+
+- Model 1: null model `obs_mod_add`
+
+Number of parameters: `r length(coef(obs_mod_add))`
+
+- Model 2: full model `obs_int_mod2_aic`
+
+Number of parameters: `r length(coef(obs_int_mod2_aic))`
+
+```{r}
+anova(obs_mod_add,obs_int_mod2_aic)[2,"Pr(>F)"]<0.01
+```
+
+We reject null hypothesis $H_0$ at significance $\alpha =0.01$. We prefer the interaction model `obs_int_mod2_aic` over the additive model. 
+
+
+## 3.2 Model Diagnostics
+
+### Model1- Additive model with all the parameters
+```{r echo = FALSE}
+summary(obs_mod_add)
+```
+
+Test statistics PValue shows all the variables are important for the model. 
+
+Note: we have removed derived variables agebins, NObeyesdad
+
+```{r echo = FALSE}
+mod_performance(obs_mod_add)
+```
+
+```{r}
+kable(mod1_stats)
+```
+
+
+```{r echo = FALSE, warning=FALSE}
+p1=mod_performance(obs_mod_add)
+p2=mod_performance(obs_int_mod2_aic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_mod_add)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
+kable(data.frame(obs_mod_add=p1,obs_int_mod2_aic=p2))
+```
+
+We check if **Transformations** is required on the response variable. We use ***Box-Cox*** Transformations that considers a family of transformations on positive response variable.
+
+```{r echo = FALSE, warning=FALSE}
+library(MASS)
+library(faraway)
+boxcox(obs_mod_add, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
+```
+
+### Model2 with two-way intreractions between variables
+
+```{r echo = FALSE}
+kable(mod2_stats)
+```
+
+
+Observations are:
+
+- 2nd model has higher $R2$ and lower RMSE on train and test datasets and that we found using two-way interaction model and AIC step wise search
+- Both models fail to rejects Normality test using BPTest. 
+- Both models fail to rejects Equal variance test using Shaphirp test.
+- The winner model has 189 predictors
+
+
+```{r echo = FALSE}
+plot_diagnostics(obs_mod_add)
+```
+
+On the Residuals vs Fitted plot, the residuals spread is not bounce constantly both side of the horizontal 0 line, we suspect Linearity assumption. Also, we would suspect this model violates the constant variance assumption as residuals spreads changes with increase in fitted value.
+
+QQ plot shows points spread close the line and we don't suspect the normality assumption is violated.
+
+Residuals don't follow normal distribution.
+
+```{r echo = FALSE}
+plot_diagnostics(obs_int_mod2_aic)
+```
+
+- Residuals vs Fitted plot, Linearity is suspected
+- Residuals vs Fitted plot, Equal variance is suspected
+- QQPlot, normality is suspected
+
+### 3.3. N. K-Fold model training
+```{r echo = FALSE}
+mod_performance(k_fold_modn)
+```
+
+## 3.4 The big picture from all models
+
+```{r echo = FALSE}
+kable(cbind(mod2_stats,mod1_stats))
+```
+
+This is really interesting to see how complex model overfit the data. We see the `Model1` has 189 variables and best $R^2$ and RMSE scores however it perform poorly on test dataset ie. `Test_rmse` score and is the most complex out of all 4 models. Thus our best selection is `Model2`.
+
+
+## 3.5 Summary from diagnostics
+
+We used HatValues to identify leverages and Cook's distance for outliers detection in Methods section. There are `r nrow(obs_outliers)` outliers and `r nrow(obs_leverages)` leverages
+
+```{r echo = FALSE}
+age_mot_agg=obs_outliers %>% count(ageBins,MTRANS)
+p1=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")
+
+age_mot_agg=obs_leverages %>% count(ageBins,MTRANS)
+p2=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")
+ggarrange(p1,p2,nrow=1,ncol=2)
+```
+
+<div style="padding-top:20px;"></div>
+
+# 4. Discussion
+
+- Obtained the dataset
+- Data cleaning
+- Split the dataset into a training set and test set.
+- Developed 4-5 models
+- Applied techniques to develop a final model including: significance tests, variable selection, transformations, model diagnostics, residual diagnostics, outlier diagnostics.
+- Implemented custom functions for re-usability and readability of our code.
+
+<div style="padding-top:20px;"></div>
+
+# 5. Appendix
+
+Below are models we considered in our process but did not deeply consider as their results were not as good, complexity was too high, and runtime was far too significant to allow further testing in a timely manner.
+
+### Model3- two-way intreractions and step wise selection
+
+```{r eval=FALSE, cache=TRUE}
+obs_int_mod3=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^3, data = obs_trn)
+p1=mod_performance(obs_int_mod3)
+p2=mod_performance(obs_int_mod3_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
+kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
+```
+
+
+### Model4- Selected Intreractions model with Interaction Terms and Outlier diagnostics
+
+```{r warning=FALSE, cache=TRUE, eval=FALSE}
+obs_int_mod4=lm(Weight~Gender + Age + Height + family_history_with_overweight + 
+    FAVC + FCVC + NCP + CAEC + SMOKE + CH2O + SCC + FAF + TUE + 
+    CALC+ Gender + MTRANS+FCVC:MTRANS:family_history_with_overweight:Gender:CALC:FAVC:NCP:SCC:Height + Gender:Height + Gender:family_history_with_overweight + 
+    Gender:FCVC + Gender:NCP + Age:FCVC + Age:NCP + 
+     + Age:CH2O + Age:FAF + Age:TUE + Age:CALC + Height:family_history_with_overweight + 
+    family_history_with_overweight:CALC ,data=obs_trn)
+
+mod_performance(obs_int_mod4)
+p4=append(p4,unlist(list(num_predictors=length(coef(obs_int_mod4)))))
+mod4_stats=data.frame(obs_int_mod4=p4)
+```
+
+r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest 
+8.409e-01  8.153e-01  1.046e+01  7.726e+01  3.339e-07  8.806e-14 
+
+### Polynomial Transformations with All 2-Way Interactions and Stepwise
+```{r eval = FALSE}
+obs_int_mod2_log_poly_2=lm(formula = Weight ~ (. - NObeyesdad + I(Height^2) + I(Age^2))^2, data = obs_trn)
+obs_int_mod2_log_poly2_aic=step(obs_int_mod2_log_poly_2,direction="both",trace=0)
+obs_int_mod2_log_poly2_bic=step(obs_int_mod2_log_poly_2,direction="both",trace=0,k=log(nrow(obs_trn)))
+```
+
+```{r eval = FALSE}
+p1=mod_performance(obs_int_mod2_log_poly2_aic)
+p2=mod_performance(obs_int_mod2_log_poly2_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_log_poly2_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_log_poly2_bic)))))
+mod2_stats=data.frame(obs_int_mod2_log_poly2_aic=p1,obs_int_mod2_log_poly2_bic=p2)
+kable(mod2_stats)
+```
+
+*Note: we omitted these models with transformations in our final decision as added significant time to execute and did not yield worthy results. Their results showed very minor differences in performance metrics and added complexity which was not desirable in our final model.*
