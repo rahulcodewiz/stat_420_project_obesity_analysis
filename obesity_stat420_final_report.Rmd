@@ -524,7 +524,7 @@ k_fold_modn <- train(
 mod_performance(k_fold_modn)
 ```
 
-This model performance is not good as compared to the interaction model
+This model performance is not good as compared to the interaction model so we continue next steps with the previously preferred model.
 
 ### 2.6 Model optimization
 
