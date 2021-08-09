@@ -35,6 +35,7 @@ library(viridis)
 library(hrbrthemes)
 library(lmtest)
 library(knitr)
+library(kableExtra)
 library(corrplot)
 library("psych")
 ```
