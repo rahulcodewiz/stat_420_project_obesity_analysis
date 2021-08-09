@@ -520,6 +520,7 @@ k_fold_modn <- train(
     verboseIter = FALSE
   )
 )
+mod_performance(k_fold_modn)
 ```
 
 This model performance is not good as compared to the interaction model
@@ -672,12 +673,7 @@ plot_diagnostics(obs_int_mod2_aic)
 - Residuals vs Fitted plot, Equal variance is suspected
 - QQPlot, normality is suspected
 
-### 3.3. N. K-Fold model training
-```{r echo = FALSE}
-mod_performance(k_fold_modn)
-```
-
-## 3.4 The big picture from all models
+## 3.3 The big picture from all models
 
 ```{r echo = FALSE}
 kable(cbind(mod2_stats,mod1_stats))
@@ -686,7 +682,7 @@ kable(cbind(mod2_stats,mod1_stats))
 This is really interesting to see how complex model overfit the data. We see the `Model1` has 189 variables and best $R^2$ and RMSE scores however it perform poorly on test dataset ie. `Test_rmse` score and is the most complex out of all 4 models. Thus our best selection is `Model2`.
 
 
-## 3.5 Summary from diagnostics
+## 3.4 Summary from diagnostics
 
 We used HatValues to identify leverages and Cook's distance for outliers detection in Methods section. There are `r nrow(obs_outliers)` outliers and `r nrow(obs_leverages)` leverages
 
