@@ -17,11 +17,6 @@ output:
 urlcolor: cyan
 link-citations: yes
 ---
-```{css, echo=FALSE}
-h1,h3 {
-  text-align: center;
-}
-```
 
 ```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
 options(scipen = 1, digits = 4, width = 80, fig.align = "center")
@@ -37,6 +32,10 @@ library(lmtest)
 library(knitr)
 library(kableExtra)
 library(corrplot)
+library(MASS)
+library(faraway)
+library(caret)
+library(leaps)
 library("psych")
 ```
 
@@ -296,7 +295,7 @@ We also experimented with adjusting some of the categorical variables, particula
 
 ## 2.3. Common functions to perform model diagnostics
 
-***Split dataset test and traint***
+***Split dataset test and train***
 
 ```{r}
 set.seed(04082021)
@@ -355,6 +354,17 @@ mod_performance=function(obs_mod,obs_tst=obs_test){
   unlist(scores, recursive = TRUE, use.names = TRUE)
 }
 ```
+
+```{r}
+bar_plot_summary=function(mod){
+  ggplot(mod, aes(y=n, x=ageBins)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    xlab("Age Group")+
+    ylab("Frequency")
+}
+```
+
 
 ## 2.4. Model Diagnostics, Performance and Selection
 
@@ -415,18 +425,19 @@ mod1_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
 ***Exhaustive search***
 
 ```{r}
-library(leaps)
 obs_mod_ex_search = summary(regsubsets(Weight ~ .-NObeyesdad-ageBins, data = obesity))
 obs_mod_ex_search$which
 ```
 
 
-Quantifies the effect of collinearity using ***Variance Inflation Factor***-
+Quantifies the effect of collinearity using ***Variance Inflation Factor***
 
 ```{r}
-library(faraway)
 kable(vif(obs_mod_add))
 ```
+
+<div style="padding-top:20px;"></div>
+
 ```{r message=FALSE, warning=FALSE}
 wt_all = lm(Weight ~ . -ageBins - NObeyesdad, data = obs_trn)
 vif(wt_all)[vif(wt_all) > 5]
@@ -442,8 +453,7 @@ We will retain the `caec` and `calc` predictors as their interaction with other 
 Further, we check if **Transformations** is required on the response variable. We will use ***Box-Cox*** Transformations that considers a family of transformations on positive response variable.
 
 ```{r warning=FALSE}
-library(MASS)
-library(faraway)
+
 boxcox(obs_mod_add, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
 ```
 
@@ -456,6 +466,8 @@ summary(obs_mod_add_trns)$adj.r.squared
 
 We observe slight performance improvement. We will be trying this approach on further models
 
+<div style="padding-top:20px;"></div>
+
 ### Model2 with two-way intreractions between variables
 
 At this stage we perform the following tasks
@@ -466,7 +478,7 @@ At this stage we perform the following tasks
 - Present scores in tabular format
 - LINE assumptions test: Linearity, Independence, Normality and Equal variance
 
-```{r}
+```{r warning = FALSE}
 obs_int_mod2=lm(formula = Weight ~ (. - NObeyesdad -ageBins)^2, data = obs_trn)
 obs_int_mod2_aic=step(obs_int_mod2,direction="both",trace=0)
 obs_int_mod2_bic=step(obs_int_mod2,direction="both",trace=0,k=log(nrow(obs_trn)))
@@ -476,6 +488,8 @@ p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_bic)))))
 mod2_stats=data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2)
 ```
+
+<div style="padding-top:20px;"></div>
 
 ### Model3- two-way intreractions and step wise selection
 
@@ -488,6 +502,7 @@ p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
 kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
 ```
 
+<div style="padding-top:20px;"></div>
 
 ### Model4- Selected Intreractions model with Interaction Terms and Outlier diagnostics
 
@@ -512,7 +527,6 @@ r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest
 ### 2.5.N. K-Fold model training
 
 ```{r warning=FALSE, eval=FALSE}
-library(caret)
 k_fold_modn <- train(
   Weight ~ . - NObeyesdad - ageBins, obs_trn,
   method = "lm",
@@ -604,8 +618,11 @@ anova(obs_mod_add,obs_int_mod2_aic)[2,"Pr(>F)"]<0.01
 
 We reject null hypothesis $H_0$ at significance $\alpha =0.01$. We prefer the interaction model `obs_int_mod2_aic` over the additive model. 
 
+<div style="padding-top:20px;"></div>
 
 ## 3.2 Model Diagnostics
+
+<div style="padding-top:20px;"></div>
 
 ### Model1- Additive model with all the parameters
 ```{r echo = FALSE}
@@ -636,10 +653,10 @@ kable(data.frame(obs_mod_add=p1,obs_int_mod2_aic=p2))
 We check if **Transformations** is required on the response variable. We use ***Box-Cox*** Transformations that considers a family of transformations on positive response variable.
 
 ```{r echo = FALSE, warning=FALSE}
-library(MASS)
-library(faraway)
 boxcox(obs_mod_add, plotit = TRUE,lambda = seq(-1, 1, by = 0.1))
 ```
+
+<div style="padding-top:20px;"></div>
 
 ### Model2 with two-way intreractions between variables
 
@@ -653,7 +670,7 @@ Observations are:
 - 2nd model has higher $R2$ and lower RMSE on train and test datasets and that we found using two-way interaction model and AIC step wise search
 - Both models fail to rejects Normality test using BPTest. 
 - Both models fail to rejects Equal variance test using Shaphirp test.
-- The winner model has 189 predictors
+- The winner model has 109 predictors
 
 
 ```{r echo = FALSE}
@@ -674,14 +691,17 @@ plot_diagnostics(obs_int_mod2_aic)
 - Residuals vs Fitted plot, Equal variance is suspected
 - QQPlot, normality is suspected
 
+<div style="padding-top:20px;"></div>
+
 ## 3.3 The big picture from all models
 
 ```{r echo = FALSE}
 kable(cbind(mod2_stats,mod1_stats))
 ```
 
-This is really interesting to see how complex model overfit the data. We see the `Model1` has 189 variables and best $R^2$ and RMSE scores however it perform poorly on test dataset ie. `Test_rmse` score and is the most complex out of all 4 models. Thus our best selection is `Model2`.
+This is really interesting to see how complex model overfit the data. We see the `Model1` has 109 variables and best $R^2$ and RMSE scores however it perform poorly on test dataset ie. `Test_rmse` score and is the most complex out of all 4 models. Thus our best selection is `Model2`.
 
+<div style="padding-top:20px;"></div>
 
 ## 3.4 Summary from diagnostics
 
@@ -689,18 +709,9 @@ We used HatValues to identify leverages and Cook's distance for outliers detecti
 
 ```{r echo = FALSE}
 age_mot_agg=obs_outliers %>% count(ageBins,MTRANS)
-p1=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
-    geom_bar(position="stack", stat="identity") +
-    scale_fill_viridis(discrete = T) +
-    xlab("Age Group")+
-    ylab("Frequency")
-
+p1 = bar_plot_summary(age_mot_agg)
 age_mot_agg=obs_leverages %>% count(ageBins,MTRANS)
-p2=ggplot(age_mot_agg, aes(y=n, x=ageBins)) + 
-    geom_bar(position="stack", stat="identity") +
-    scale_fill_viridis(discrete = T) +
-    xlab("Age Group")+
-    ylab("Frequency")
+p2 = bar_plot_summary(age_mot_agg)
 ggarrange(p1,p2,nrow=1,ncol=2)
 ```
 
@@ -708,12 +719,20 @@ ggarrange(p1,p2,nrow=1,ncol=2)
 
 # 4. Discussion
 
-- Obtained the dataset
-- Data cleaning
-- Split the dataset into a training set and test set.
-- Developed 4-5 models
-- Applied techniques to develop a final model including: significance tests, variable selection, transformations, model diagnostics, residual diagnostics, outlier diagnostics.
-- Implemented custom functions for re-usability and readability of our code.
+A model predicting an individual's weight based on the dietary, social and physical attributes was trained using the UCI obesity dataset. In preparing the data for model training, we fixed 101 observations whose obesity levels were misclassifed. We also identified predictors that posed some multicollinearity issues (`caec`, `calc`, `bmi` and `wstatus`). We decided to drop the `bmi` and `wstatus` and retained `caec` and `calc` as the latters' interaction with the rest of the predictors enhanced the results of the model that were generated with their presence.  We decided on keeping the existing levels of the `mtrans` categorical variable instead of reducing it after we determined that it did not provide any added benefit.
+
+Here is a summary of the steps we followed, results of those steps, and our anaylsis:
+
+- We split the dataset into a training set and test set [section 2.3].
+- Implemented custom functions for re-usability and readability of our code  [section 2.2].
+- We experimented with various parameters and developed many models, best performing models are presented in the results section [2.3]. We started with the simple additive model with `25` predictors[2.1 model 1], and eliminated predictors where found multicollinearity and insignificant test statistics. The additive model’s performance $R^2$ `0.6018` and $AdjR^2$ 0.5960.  We present `model2` onwards interactions models.
+- Further, we applied variable selection techniques, including (AIC/BIC) in both directions on each of the model discussed in section [2.3]. This technique helped to reduce number of predictors, more specifically our `model 2 [2.3]` has initially `286` predictors, with AIC and BIC stepwise search in both directions it reduced to `109` and `86` respectively.
+- As a part of our research we also experimented transformations ie. boxcox, polynomial and log [2.6]. However our results for polynomial and boxcox transformations were not better than on response as well as numeric predictors.
+- Our best performing model is `model 2`
+
+```{r}
+kable(mod2_stats)
+```
 
 <div style="padding-top:20px;"></div>
 
@@ -731,7 +750,6 @@ p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod3_aic)))))
 p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod3_bic)))))
 kable(data.frame(obs_mod_add_aic=p1,obs_mod_add_bic=p2))
 ```
-
 
 ### Model4- Selected Intreractions model with Interaction Terms and Outlier diagnostics
 
@@ -751,6 +769,38 @@ mod4_stats=data.frame(obs_int_mod4=p4)
 r2, adjr2, Train_rmse,  Test_rmse,  bptest.BP,     sptest 
 8.409e-01  8.153e-01  1.046e+01  7.726e+01  3.339e-07  8.806e-14 
 
+### Log Response Transformation with All 2-Way Interactions and Stepwise
+```{r eval = FALSE}
+obs_int_mod2_log=lm(formula = log(Weight) ~ (. - NObeyesdad)^2, data = obs_trn)
+obs_int_mod2_log_aic=step(obs_int_mod2_log,direction="both",trace=0)
+obs_int_mod2_log_bic=step(obs_int_mod2_log,direction="both",trace=0,k=log(nrow(obs_trn)))
+```
+
+```{r eval = FALSE}
+p1=mod_performance(obs_int_mod2_log_aic)
+p2=mod_performance(obs_int_mod2_log_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_log_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_log_bic)))))
+mod2_stats=data.frame(obs_int_mod2_log_aic=p1,obs_int_mod2_log_bic=p2)
+kable(mod2_stats)
+```
+
+### Log Response, Polynomial Predictors Transformation with All 2-Way Interactions and Stepwise
+```{r eval = FALSE}
+obs_int_mod2_log_poly_2=lm(formula = log(Weight) ~ (. - NObeyesdad + I(Height^2) + I(Age^2))^2, data = obs_trn)
+obs_int_mod2_log_aic=step(obs_int_mod2_log,direction="both",trace=0)
+obs_int_mod2_log_bic=step(obs_int_mod2_log,direction="both",trace=0,k=log(nrow(obs_trn)))
+```
+
+```{r eval = FALSE}
+p1=mod_performance(obs_int_mod2_log_aic)
+p2=mod_performance(obs_int_mod2_log_bic)
+p1=append(p1,unlist(list(num_predictors=length(coef(obs_int_mod2_log_aic)))))
+p2=append(p2,unlist(list(num_predictors=length(coef(obs_int_mod2_log_bic)))))
+mod2_stats=data.frame(obs_int_mod2_log_aic=p1,obs_int_mod2_log_bic=p2)
+kable(mod2_stats)
+```
+
 ### Polynomial Transformations with All 2-Way Interactions and Stepwise
 ```{r eval = FALSE}
 obs_int_mod2_log_poly_2=lm(formula = Weight ~ (. - NObeyesdad + I(Height^2) + I(Age^2))^2, data = obs_trn)
@@ -768,3 +818,16 @@ kable(mod2_stats)
 ```
 
 *Note: we omitted these models with transformations in our final decision as added significant time to execute and did not yield worthy results. Their results showed very minor differences in performance metrics and added complexity which was not desirable in our final model.*
+
+## References
+[1]. Fabio Mendoza Palechor; Alexis de la Hoz Manotas, Dataset for estimation of obesity levels based on eating habits and physical condition in individuals from Colombia, Peru and Mexico. Data in Brief, Volume 25, 2019,104344.
+
+[2]. <a href="https://www.who.int/news-room/fact-sheets/detail/obesity-and-overweight">Obesity and overweight</a>
+
+[3]. <a href="https://archive.ics.uci.edu/ml/datasets/Estimation+of+obesity+levels+based+on+eating+habits+and+physical+condition+">Estimation of obesity levels based on eating habits and physical condition Data Set, UCI Machine Learning Repository</a>
+
+[4]. Eduardo De-La-Hoz-Correa, Fabio E. Mendoza-Palechor, Alexis De-La-Hoz-Manotas, Roberto C. Morales-Ortega and Sánchez Hernández Beatriz Adriana, Obesity Level Estimation Software based on Decision Trees
+
+[5]. Obesity: a public health problem, MAGAZINE OF SCIENTIFIC AND TECHNOLOGICAL DISCLOSURE OF THE VERACRUZANA UNIVERSITY.
+
+[6]. <a href="https://www.nhlbi.nih.gov/health/educational/lose_wt/BMI/bmicalc.htm">Body Mass Index calculator</a>
